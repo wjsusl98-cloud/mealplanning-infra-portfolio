@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mp-app-services
+  namespace: app
+  labels:
+    app.kubernetes.io/part-of: mealplanning
+spec:
+  namespaceSelector:
+    matchNames: [app]
+  selector:
+    matchExpressions:
+      - key: app
+        operator: Exists
+      - key: app
+        operator: NotIn
+        values: [frontend, ranking-serving]
+  endpoints:
+    - port: http
+      path: /stats/prometheus
+      interval: 30s
+      scrapeTimeout: 10s
+      relabelings:
+        - sourceLabels: [__address__]
+          regex: '(.+):\\d+'
+          targetLabel: __address__
+          replacement: '${1}:15020'

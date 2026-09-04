@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mp-operations
+  namespace: app
+  labels:
+    app: operations
+    tier: backend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: operations
+  template:
+    metadata:
+      labels:
+        app: operations
+        tier: backend
+    spec:
+      automountServiceAccountToken: false
+      serviceAccountName: mp-operations
+      priorityClassName: app-normal
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: operations
+          image: ${CONTAINER_REGISTRY}/mealplanning/mp-operations-service:${IMAGE_TAG}
+          ports:
+            - name: http
+              containerPort: 8011
+          envFrom:
+            - configMapRef:
+                name: app-common
+            - secretRef:
+                name: mp-operations-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: operations
+            - name: OPERATIONS_COLLECTOR_ENABLED
+              value: "true"
+            - name: OPERATIONS_PROMETHEUS_URL
+              value: http://kube-prometheus-stack-prometheus.observability.svc:9090
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

@@ -1,0 +1,19 @@
+// Alloy DaemonSet에서 Kubernetes Pod 로그를 Loki로 수집하는 공개용 구성.
+local.file_match "pod_logs" {
+  path_targets = [{ "__path__" = "/var/log/pods/*/*/*.log" }]
+}
+
+loki.source.file "pods" {
+  targets    = local.file_match.pod_logs.targets
+  forward_to = [loki.process.pods.receiver]
+}
+
+loki.process "pods" {
+  stage.cri {}
+  stage.static_labels { values = { cluster = "mealplanning" } }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint { url = sys.env("LOKI_PUSH_URL") }
+}

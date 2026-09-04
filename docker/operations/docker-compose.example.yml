@@ -1,0 +1,19 @@
+services:
+  operations-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      OPERATIONS_DATABASE_ENABLED: "false"
+      OPERATIONS_COLLECTOR_ENABLED: "true"
+      OPERATIONS_PROMETHEUS_URL: ${OPERATIONS_PROMETHEUS_URL}
+      OPERATIONS_LOKI_EVIDENCE_ENABLED: "false"
+      OPERATIONS_TEMPO_EVIDENCE_ENABLED: "false"
+      OPERATIONS_RCA_PROVIDER: mock
+      AWS_REGION: ${AWS_REGION:-ap-northeast-2}
+    ports:
+      - "${OPERATIONS_PORT:-8011}:8011"
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped

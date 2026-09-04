@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: mp-app-symptom
+  namespace: observability
+spec:
+  groups:
+    - name: mp-app-symptom
+      rules:
+        - alert: MpAuthPathFailing
+          expr: |
+            sum(increase(http_requests_total{namespace="app",service!~".*-canary",
+              handler=~"/api/auth/(login|signup|refresh|google|kakao)",status=~"5.."}[30m])) >= 5
+          for: 15m
+          labels:
+            severity: critical
+            environment: production
+          annotations:
+            summary: "인증 경로에서 30분간 5xx가 5건 이상 발생"
+        - alert: MpMealplanRecommendFailing
+          expr: |
+            sum(increase(http_requests_total{namespace="app",service!~".*-canary",
+              handler="/api/mealplan/recommend",status=~"5.."}[30m])) >= 3
+          for: 15m
+          labels:
+            severity: critical
+            environment: production
+          annotations:
+            summary: "식단 추천 API에서 30분간 5xx가 3건 이상 발생"
