@@ -1,3 +1,8 @@
+# 앱 서비스 지표 수집.
+#
+# 대상에서 빠지는 둘(실측 근거):
+#   frontend        — 정적 서빙이라 /metrics 없음(포트도 80)
+#   ranking-serving — /metrics 404
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -10,18 +15,22 @@ spec:
     matchNames: [app]
   selector:
     matchExpressions:
-      - key: app
-        operator: Exists
-      - key: app
-        operator: NotIn
-        values: [frontend, ranking-serving]
+      - { key: app, operator: Exists }
+      - { key: app, operator: NotIn, values: [frontend, ranking-serving] }
   endpoints:
-    - port: http
-      path: /stats/prometheus
+    # mTLS STRICT(PeerAuthentication) 전제 — 앱 :<port>/metrics 직접 scrape는 사이드카가
+    # 평문으로 거절한다. Prometheus는 메시 밖이라 mTLS를 못 연다 → Istio 병합 엔드포인트
+    # 15020/stats/prometheus(pilot-agent, Envoy mTLS 우회 밖)로만 도달 가능. 앱 메트릭이
+    # 병합에 실리는 건 각 Deployment 파드의 prometheus.io/{scrape,path,port} 어노테이션이
+    # 전제다.
+    - port: http                 # http 포트로 파드(EndpointSlice)를 발견만 하고, 실제
+      path: /stats/prometheus    # scrape 주소는 아래 relabel로 15020으로 돌린다
       interval: 30s
       scrapeTimeout: 10s
       relabelings:
+        # podIP:<앱포트> → podIP:15020. 병합 엔드포인트는 Service 포트가 아니라 파드
+        # agent 포트라 targetPort 대신 주소를 갈아끼운다.
         - sourceLabels: [__address__]
-          regex: '(.+):\\d+'
+          regex: '(.+):\d+'
           targetLabel: __address__
           replacement: '${1}:15020'

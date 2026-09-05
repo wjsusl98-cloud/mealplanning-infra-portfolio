@@ -1,0 +1,113 @@
+# loki — 플랫폼 child Application. ArgoCD GitOps로 배포한 실제 매니페스트입니다.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: platform
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: "7.1.0"
+    helm:
+      valuesObject:
+        deploymentMode: SingleBinary
+        loki:
+          auth_enabled: false # 단일 테넌트
+          commonConfig:
+            replication_factor: 1
+          storage:
+            type: s3
+            bucketNames: # 단일 버킷(loki) 재사용
+              chunks: loki
+              ruler: loki
+              admin: loki
+            s3:
+              # `.svc` 단축형 고정 — 4-dot FQDN이면 search 확장 중 `.local`로 새어 ISP가
+              # NXDOMAIN을 공인 IP로 하이재킹한다(실측 21.7%). alloy.yaml 주석 참조.
+              endpoint: http://minio.observability.svc:9000
+              accessKeyId: ${MINIO_ACCESS_KEY_ID}
+              secretAccessKey: ${MINIO_SECRET_ACCESS_KEY}
+              s3ForcePathStyle: true
+              insecure: true
+          schemaConfig:
+            configs:
+              - from: "2026-07-01"
+                store: tsdb
+                object_store: s3
+                schema: v13
+                index:
+                  prefix: index_
+                  period: 24h
+          limits_config:
+            retention_period: 168h
+          compactor:
+            retention_enabled: true
+            delete_request_store: s3
+        # SSD(SimpleScalable) 타깃을 명시적으로 0 — validate 스텝이 deploymentMode와
+        # 무관하게 양쪽 replicas를 검사해서, 기본값(각 3)이 남아 있으면 렌더가 죽는다.
+        read:
+          replicas: 0
+        write:
+          replicas: 0
+        backend:
+          replicas: 0
+        singleBinary:
+          replicas: 1
+          # 관측은 특정 노드로 배치 원칙 통일(Prometheus·MinIO 동일). 노드 볼륨 사용량이
+          # 한쪽으로 몰려 데이터 티어가 자리를 못 잡는 문제가 있어 재배치했다 —
+          # 로컬 PV는 "옮기기 = 볼륨 재생성"이라 워크로드마다 대가가 다른데, Loki가
+          # 가장 싸다: 청크·인덱스는 S3로 나가고 이 볼륨은 작업 디렉터리(WAL·캐시)뿐이라
+          # 잃는 건 아직 플러시 안 된 최근 WAL 정도다.
+          nodeSelector:
+            kubernetes.io/hostname: ${LOKI_NODE_HOSTNAME}
+          persistence:
+            size: 10Gi
+            storageClass: openebs-lvm
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+          extraArgs:
+            - -config.expand-env=true
+          extraEnvFrom:
+            - secretRef:
+                name: lgtm-minio-creds
+        # ── 부속 전부 off — 소규모 클러스터에 과잉이고 리소스를 먹는다 ──
+        gateway:
+          enabled: false # 소비자는 svc/loki:3100 직결(Alloy·Grafana)
+        chunksCache:
+          enabled: false # memcached
+        resultsCache:
+          enabled: false
+        lokiCanary:
+          enabled: false
+        test:
+          enabled: false
+        sidecar:
+          rules:
+            enabled: false # ruler 미사용
+        rbac:
+          namespaced: true # ClusterRole 대신 Role — 클러스터 스코프 최소화
+        monitoring:
+          serviceMonitor:
+            enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: observability
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 5m

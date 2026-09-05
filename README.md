@@ -114,7 +114,7 @@ Kubernetes 관측 스택을 EKS로 이관하고, Loki·Tempo의 장기 저장소
 | [`kubernetes/`](kubernetes/) | Operations Deployment·Service와 Kubernetes 관측 이관에 사용한 ServiceMonitor·Alert Rule·Alloy·Tempo 설정 | GitOps 배포 정본 레포(`mealplanning-config`, 비공개 — 매니페스트 전용이라 팀 전체 비공개 정책) |
 | [`operations-analysis/`](operations-analysis/) | 이상징후 탐지·장애 조사 건 상관분석 로직과 회귀 테스트 | [`services/operations/app/`](https://github.com/happyInit/food-budget-app/tree/main/services/operations/app) (public) |
 | [`load-test/`](load-test/) | Price API 부하 검증을 재현하는 k6 스크립트 | [`loadtest/`](https://github.com/happyInit/food-budget-app/tree/main/loadtest) (public) |
-| [`infra/terraform/operations-dashboard/`](infra/terraform/operations-dashboard/) | Operations API용 EC2 IAM·EKS 접근 규칙 Terraform 예시 | [`infra/terraform/mp-dashboard/`](https://github.com/happyInit/food-budget-app/tree/main/infra/terraform/mp-dashboard) (public) |
+| [`infra/terraform/operations-dashboard/`](infra/terraform/operations-dashboard/) | Operations 대시보드 EC2 — permissions boundary·Bedrock Guardrail ABAC·IMDSv2 하드닝 | [`infra/terraform/mp-dashboard/`](https://github.com/happyInit/food-budget-app/tree/main/infra/terraform/mp-dashboard) (public) |
 
 ---
 
