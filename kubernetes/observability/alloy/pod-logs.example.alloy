@@ -1,19 +1,51 @@
-// Alloy DaemonSet에서 Kubernetes Pod 로그를 Loki로 수집하는 공개용 구성.
+// Alloy DaemonSet에서 "이 노드"의 Pod 로그만 찾아 Loki로 보내는 구성.
+// NODE_NAME으로 discovery를 노드 단위로 좁혀서, 각 노드의 Alloy가 자기 노드분만 담당한다.
+
+discovery.kubernetes "pods" {
+  role = "pod"
+  selectors {
+    role  = "pod"
+    field = "spec.nodeName=" + sys.env("NODE_NAME")
+  }
+}
+
+// __path__는 파드 UID·컨테이너명으로 조립한다 — 파드 이름만으로는 로그 파일 경로가 안 나온다
+// (kubelet이 /var/log/pods/<ns>_<pod>_<uid>/<container>/*.log 형태로 쓰기 때문).
+discovery.relabel "pod_logs" {
+  targets = discovery.kubernetes.pods.targets
+
+  rule {
+    source_labels = ["__meta_kubernetes_namespace"]
+    target_label  = "namespace"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_name"]
+    target_label  = "pod"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_container_name"]
+    target_label  = "container"
+  }
+  rule {
+    source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+    separator     = "/"
+    action        = "replace"
+    replacement   = "/var/log/pods/*$1/*.log"
+    target_label  = "__path__"
+  }
+}
+
 local.file_match "pod_logs" {
-  path_targets = [{ "__path__" = "/var/log/pods/*/*/*.log" }]
+  path_targets = discovery.relabel.pod_logs.output
 }
 
-loki.source.file "pods" {
+loki.source.file "pod_logs" {
   targets    = local.file_match.pod_logs.targets
-  forward_to = [loki.process.pods.receiver]
-}
-
-loki.process "pods" {
-  stage.cri {}
-  stage.static_labels { values = { cluster = "mealplanning" } }
   forward_to = [loki.write.default.receiver]
 }
 
 loki.write "default" {
-  endpoint { url = sys.env("LOKI_PUSH_URL") }
+  endpoint {
+    url = sys.env("LOKI_PUSH_URL")
+  }
 }

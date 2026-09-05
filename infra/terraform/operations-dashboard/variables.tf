@@ -4,8 +4,11 @@ variable "aws_region" {
 }
 
 variable "project_name" { type = string }
-variable "operations_security_group_id" { type = string }
+variable "ami_id" { type = string }
+variable "subnet_id" { type = string }
+variable "dashboard_security_group_id" { type = string }
 variable "eks_node_security_group_id" { type = string }
+variable "permissions_boundary_arn" { type = string }
 variable "bedrock_model_arns" {
   type        = list(string)
   description = "Approved model ARN list only."

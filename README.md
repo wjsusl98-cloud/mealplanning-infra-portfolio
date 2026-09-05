@@ -9,6 +9,9 @@
 | 기간 | 2026.06.29 ~ 2026.08.26 |
 | 환경 이관 | Docker → Kubernetes → AWS EKS |
 | 프로젝트 핵심 | 통합 모니터링 · 성능 검증 · 이상징후 대시보드 구축 · 장애 대응 지원 |
+| 원본 레포 | [`happyInit/food-budget-app`](https://github.com/happyInit/food-budget-app) — 5인 팀 공개 저장소(실제 커밋 히스토리·Contributors 확인 가능) |
+
+> 이 저장소는 위 팀 프로젝트에서 **제가 담당한 부분을 발췌·정리**한 것입니다. 실제 작업 이력과 다른 팀원의 기여는 원본 레포에서 확인하실 수 있습니다.
 
 ### 프로젝트 한눈에 보기
 
@@ -103,15 +106,15 @@ Kubernetes 관측 스택을 EKS로 이관하고, Loki·Tempo의 장기 저장소
 
 ## 💻 공개 코드 구성
 
-내부 IP·도메인·계정·비밀값을 제외하고, 제가 담당한 운영 구조와 검증 로직을 재현 가능한 형태로 정리했습니다.
+내부 IP·도메인·계정·비밀값을 제외하고, 제가 담당한 운영 구조와 검증 로직을 재현 가능한 형태로 정리했습니다. 코드·설정 구조(리소스 종류, discovery/relabel 로직, IAM 정책 형태 등)는 실제 운영에 쓴 것과 동일하며, 값(IP·도메인·ARN 등)만 예시로 치환했습니다.
 
-| 경로 | 공개한 내용 |
-| --- | --- |
-| [`docker/operations/`](docker/operations/) | Operations API의 비루트 컨테이너 이미지와 공개용 Compose 구성 |
-| [`kubernetes/`](kubernetes/) | Operations Deployment·Service와 Kubernetes 관측 이관에 사용한 ServiceMonitor·Alert Rule·Alloy·Tempo 설정 |
-| [`operations-analysis/`](operations-analysis/) | 이상징후 탐지·장애 조사 건 상관분석 로직과 회귀 테스트 |
-| [`load-test/`](load-test/) | Price API 부하 검증을 재현하는 k6 스크립트 |
-| [`infra/terraform/operations-dashboard/`](infra/terraform/operations-dashboard/) | Operations API용 EC2 IAM·EKS 접근 규칙 Terraform 예시 |
+| 경로 (이 저장소) | 공개한 내용 | 원본 소스 |
+| --- | --- | --- |
+| [`docker/operations/`](docker/operations/) | Operations API의 비루트 컨테이너 이미지와 공개용 Compose 구성 | [`services/operations/`](https://github.com/happyInit/food-budget-app/tree/main/services/operations) (public) |
+| [`kubernetes/`](kubernetes/) | Operations Deployment·Service와 Kubernetes 관측 이관에 사용한 ServiceMonitor·Alert Rule·Alloy·Tempo 설정 | GitOps 배포 정본 레포(`mealplanning-config`, 비공개 — 매니페스트 전용이라 팀 전체 비공개 정책) |
+| [`operations-analysis/`](operations-analysis/) | 이상징후 탐지·장애 조사 건 상관분석 로직과 회귀 테스트 | [`services/operations/app/`](https://github.com/happyInit/food-budget-app/tree/main/services/operations/app) (public) |
+| [`load-test/`](load-test/) | Price API 부하 검증을 재현하는 k6 스크립트 | [`loadtest/`](https://github.com/happyInit/food-budget-app/tree/main/loadtest) (public) |
+| [`infra/terraform/operations-dashboard/`](infra/terraform/operations-dashboard/) | Operations API용 EC2 IAM·EKS 접근 규칙 Terraform 예시 | [`infra/terraform/mp-dashboard/`](https://github.com/happyInit/food-budget-app/tree/main/infra/terraform/mp-dashboard) (public) |
 
 ---
 
